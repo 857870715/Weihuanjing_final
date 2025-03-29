@@ -25,17 +25,32 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "dwt_delay.h"
+#include "stdio.h"
+#include <string.h>
+#include "i2c1_hal.h"
+#include "i2c2_hal.h"
+#include "i2c3_hal.h"
+#include "sht3x_1.h"
+#include "sht3x_2.h"
+#include "sht3x_3.h"
+#include "processcommand.h"
+#include "rtc_alarm.h"
+#include "mqtt.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+etError   error;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#ifndef RTC_ALARMSUBSECONDMASK_ALL
+#define RTC_ALARMSUBSECONDMASK_ALL 0x0000000FU  // 根据实际寄存器位宽调�??
+#endif
 
+#define ALART_TIME 3600	/* S */
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,7 +61,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint8_t dataAcquisitionFlag = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,7 +92,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  CPU_TS_TmrInit();
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -93,13 +108,27 @@ int main(void)
   MX_RTC_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_PWREx_EnableLowPowerRunMode();
 
+  I2c1_Init();
+  SHT3X1_Init(0x45);
+  I2c2_Init();
+  SHT3X2_Init(0x45);
+  I2c3_Init();
+  SHT3X3_Init(0x45);
+
+  GetDataAndSend();
+
+  Set_Next_Alarm(&hrtc, ALART_TIME);
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    HAL_Delay(2000);
+    HAL_PWR_EnterSTANDBYMode();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -145,7 +174,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSE;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV4;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV8;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 

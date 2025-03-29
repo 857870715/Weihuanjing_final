@@ -16,12 +16,12 @@
 #include "gpio.h"
 
 /* 端口声明 */
-#define Sht30_I2c1_Sda_GPIO GPIOA
-#define Sht30_I2c1_Sda_ClockCmd RCC_APB2Periph_GPIOA
-#define Sht30_I2c1_Sda_PIN GPIO_PIN_15
+#define Sht30_I2c1_Sda_GPIO GPIOB
+#define Sht30_I2c1_Sda_ClockCmd RCC_APB2Periph_GPIOB
+#define Sht30_I2c1_Sda_PIN GPIO_PIN_6
 #define Sht30_I2c1_Scl_GPIO GPIOB
 #define Sht30_I2c1_Scl_ClockCmd RCC_APB2Periph_GPIOB
-#define Sht30_I2c1_Scl_PIN GPIO_PIN_3
+#define Sht30_I2c1_Scl_PIN GPIO_PIN_7
 
 
 #define Sht30_I2c1_Scl_SET HAL_GPIO_WritePin(Sht30_I2c1_Scl_GPIO,Sht30_I2c1_Scl_PIN,GPIO_PIN_SET)
