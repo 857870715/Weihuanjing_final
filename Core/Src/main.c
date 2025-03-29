@@ -109,6 +109,7 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   HAL_PWREx_EnableLowPowerRunMode();
+  PWR_LED();
 
   I2c1_Init();
   SHT3X1_Init(0x45);
@@ -135,6 +136,8 @@ int main(void)
   }
   /* USER CODE END 3 */
 }
+
+
 
 /**
   * @brief System Clock Configuration

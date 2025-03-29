@@ -32,4 +32,5 @@
 
 void GetDataAndSend(void);
 
+void PWR_LED(void);
 #endif /* HARDWARE_PROCESSCOMMAND_H_ */

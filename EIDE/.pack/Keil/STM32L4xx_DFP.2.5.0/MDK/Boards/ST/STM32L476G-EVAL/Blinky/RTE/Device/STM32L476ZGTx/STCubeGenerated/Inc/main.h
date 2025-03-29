@@ -92,3 +92,4 @@ extern const osThreadAttr_t app_main_attr;
 #endif /* __MAIN_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
+
