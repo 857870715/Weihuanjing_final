@@ -26,6 +26,10 @@ static DeviceConfig g_deviceConfig;
 // 全局 MQTT 主题字符串（构造格式：/sys/<PRODUCT_KEY>/<DEVICE_NAME>/thing/event/property/post）
 static char MQTT_TOPIC_SEND[128] = "";
 
+char outStr[64];
+uint8_t RxBuffer[40] = {0};
+extern DMA_HandleTypeDef hdma_usart2_rx;
+extern RTC_HandleTypeDef hrtc;
 /**
  * @brief 从 Flash 中读取设备配置数据
  */
@@ -57,7 +61,9 @@ static void UpdateMQTTTopic(void)
 void sendATCmd(const char* cmd, uint32_t delay_ms)
 {
     // 发送 AT 指令，并自动换行
-    printf("%s\r\n", cmd);
+    char buffer[256];
+    int len = sprintf(buffer, "%s\r\n", cmd);
+    HAL_UART_Transmit_DMA(&huart2, (uint8_t*)buffer, len);
     HAL_Delay(delay_ms);
 }
 
@@ -97,6 +103,7 @@ void Sendmessage(float temperature1, float humidity1,
                  float temperature3, float humidity3) 
 {
     char payload[256];
+    // char cmdBuffer_Sendmessage[256];
     snprintf(payload, sizeof(payload),
              "{\"params\":{"
              "\"temperature1\":%.1f,\"humidity1\":%.1f,"
@@ -108,6 +115,86 @@ void Sendmessage(float temperature1, float humidity1,
              temperature3, humidity3);
 
     // 使用构造好的 MQTT_TOPIC_SEND 发送 AT 指令
+    // snprintf(cmdBuffer_Sendmessage, sizeof(cmdBuffer_Sendmessage), 
+    //         "AT+ECMTPUB=0,0,0,0,\"%s\",%s", MQTT_TOPIC_SEND, payload);
+    // sendATCmd(cmdBuffer_Sendmessage, 100);
     printf("AT+ECMTPUB=0,0,0,0,\"%s\",%s\r\n", MQTT_TOPIC_SEND, payload);
     HAL_Delay(100);
 }
+void CheckTimeSetRTC(void)
+{
+    char cmdBuffer_RTC[20];
+    HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
+    sprintf(cmdBuffer_RTC, "AT+CCLK?");
+    sendATCmd(cmdBuffer_RTC, 100);
+    // printf("AT+CCLK?\r\n");
+}
+
+/**
+  * @brief  UART接收完成回调函数
+  * @param  huart: 串口句柄
+  * @note   当UART DMA接收到指定长度的数据（这里是100字节）后就会调用此回调
+  */
+ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+ {
+     if (huart->Instance == USART2)
+     {
+         // 在RxBuffer中查找 +CCLK
+         char *pLine = strstr((char*)RxBuffer, "+CCLK: ");
+         if (pLine != NULL)
+         {
+             int year, month, date;
+             int hour, minute, second;
+             int timezone; // 如果需要可以使用
+ 
+             // 解析: +CCLK: "YYYY/MM/DD,hh:mm:ss+ZZ"
+             if (sscanf(pLine, "+CCLK: \"%d/%d/%d,%d:%d:%d+%d\"",
+                        &year, &month, &date,
+                        &hour, &minute, &second,
+                        &timezone) == 7)
+             {
+                 // 1) 将解析出的时间写入RTC
+                 RTC_TimeTypeDef sTime = {0};
+                 RTC_DateTypeDef sDate = {0};
+ 
+                 sDate.Year  = (uint8_t)(year - 2000);
+                 sDate.Month = (uint8_t)month;
+                 sDate.Date  = (uint8_t)date;
+ 
+                 sTime.Hours   = (uint8_t)hour;
+                 sTime.Minutes = (uint8_t)minute;
+                 sTime.Seconds = (uint8_t)second;
+                 sTime.TimeFormat = RTC_HOURFORMAT12_AM; 
+ 
+                 HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+                 HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+ 
+                 // 2) 读取刚刚写入的RTC时间，并通过串口2发送出去
+                 RTC_TimeTypeDef sTimeRead = {0};
+                 RTC_DateTypeDef sDateRead = {0};
+ 
+                 // 读取RTC，先读time再读date（HAL库要求）
+                 HAL_RTC_GetTime(&hrtc, &sTimeRead, RTC_FORMAT_BIN);
+                 HAL_RTC_GetDate(&hrtc, &sDateRead, RTC_FORMAT_BIN);
+ 
+                 // 拼接输出字符串
+                 
+                 // 这里用 20%02d 处理两位数的Year，假设Year是在2000~2099
+                 snprintf(outStr, sizeof(outStr),
+                          "Current RTC: 20%02d/%02d/%02d %02d:%02d:%02d\r\n",
+                          sDateRead.Year,
+                          sDateRead.Month,
+                          sDateRead.Date,
+                          sTimeRead.Hours,
+                          sTimeRead.Minutes,
+                          sTimeRead.Seconds);
+ 
+                 // 发送到串口2 (DMA方式)
+                 HAL_UART_Transmit_DMA(&huart2, (uint8_t*)outStr, strlen(outStr));
+             }
+         }
+ 
+         // 如果要继续接收后续NB数据，必须再启动一次DMA接收
+        //  HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
+     }
+ }

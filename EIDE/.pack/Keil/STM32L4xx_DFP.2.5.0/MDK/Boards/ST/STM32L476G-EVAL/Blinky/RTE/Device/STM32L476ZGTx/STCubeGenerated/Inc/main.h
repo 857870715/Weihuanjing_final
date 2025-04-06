@@ -83,6 +83,7 @@ extern void app_main (void *arg);
 
 extern uint64_t app_main_stk[];
 extern const osThreadAttr_t app_main_attr;
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -51,6 +51,7 @@ etError   error;
 #endif
 
 #define ALART_TIME 3600	/* S */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -120,8 +121,6 @@ int main(void)
 
   GetDataAndSend();
 
-  Set_Next_Alarm(&hrtc, ALART_TIME);
-  
   /* USER CODE END 2 */
 
   /* Infinite loop */

@@ -30,5 +30,6 @@ void Sendmessage(float temperature1, float humidity1,
     float temperature2, float humidity2,
     float temperature3, float humidity3);
 void sendATCmd(const char* cmd, uint32_t delay_ms);
+void CheckTimeSetRTC(void);
 
 #endif /* HARDWARE_MQTT_H_ */
