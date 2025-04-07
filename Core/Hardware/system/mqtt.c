@@ -26,8 +26,8 @@ static DeviceConfig g_deviceConfig;
 // 全局 MQTT 主题字符串（构造格式：/sys/<PRODUCT_KEY>/<DEVICE_NAME>/thing/event/property/post）
 static char MQTT_TOPIC_SEND[128] = "";
 
-char outStr[64];
-uint8_t RxBuffer[40] = {0};
+extern char outStr[64];
+extern uint8_t RxBuffer[50];
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern RTC_HandleTypeDef hrtc;
 /**
@@ -135,66 +135,75 @@ void CheckTimeSetRTC(void)
   * @param  huart: 串口句柄
   * @note   当UART DMA接收到指定长度的数据（这里是100字节）后就会调用此回调
   */
- void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
- {
-     if (huart->Instance == USART2)
-     {
-         // 在RxBuffer中查找 +CCLK
-         char *pLine = strstr((char*)RxBuffer, "+CCLK: ");
-         if (pLine != NULL)
-         {
-             int year, month, date;
-             int hour, minute, second;
-             int timezone; // 如果需要可以使用
- 
-             // 解析: +CCLK: "YYYY/MM/DD,hh:mm:ss+ZZ"
-             if (sscanf(pLine, "+CCLK: \"%d/%d/%d,%d:%d:%d+%d\"",
-                        &year, &month, &date,
-                        &hour, &minute, &second,
-                        &timezone) == 7)
-             {
-                 // 1) 将解析出的时间写入RTC
-                 RTC_TimeTypeDef sTime = {0};
-                 RTC_DateTypeDef sDate = {0};
- 
-                 sDate.Year  = (uint8_t)(year - 2000);
-                 sDate.Month = (uint8_t)month;
-                 sDate.Date  = (uint8_t)date;
- 
-                 sTime.Hours   = (uint8_t)hour;
-                 sTime.Minutes = (uint8_t)minute;
-                 sTime.Seconds = (uint8_t)second;
-                 sTime.TimeFormat = RTC_HOURFORMAT12_AM; 
- 
-                 HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-                 HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
- 
-                 // 2) 读取刚刚写入的RTC时间，并通过串口2发送出去
-                 RTC_TimeTypeDef sTimeRead = {0};
-                 RTC_DateTypeDef sDateRead = {0};
- 
-                 // 读取RTC，先读time再读date（HAL库要求）
-                 HAL_RTC_GetTime(&hrtc, &sTimeRead, RTC_FORMAT_BIN);
-                 HAL_RTC_GetDate(&hrtc, &sDateRead, RTC_FORMAT_BIN);
- 
-                 // 拼接输出字符串
-                 
-                 // 这里用 20%02d 处理两位数的Year，假设Year是在2000~2099
-                 snprintf(outStr, sizeof(outStr),
-                          "Current RTC: 20%02d/%02d/%02d %02d:%02d:%02d\r\n",
-                          sDateRead.Year,
-                          sDateRead.Month,
-                          sDateRead.Date,
-                          sTimeRead.Hours,
-                          sTimeRead.Minutes,
-                          sTimeRead.Seconds);
- 
-                 // 发送到串口2 (DMA方式)
-                 HAL_UART_Transmit_DMA(&huart2, (uint8_t*)outStr, strlen(outStr));
-             }
-         }
- 
-         // 如果要继续接收后续NB数据，必须再启动一次DMA接收
-        //  HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
-     }
- }
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART2)
+    {
+        char *pLine = (char*)RxBuffer;  // 将接收缓冲转成字符串指针
+        char *pIP = strstr(pLine, "+IP:");
+        if (pIP != NULL)
+        {
+            NBAcquisitionFlag = 1; // 设置标志位，表示接收到了NB数据
+            return; // 直接返回，避免继续处理
+        }
+    
+        // 在RxBuffer中查找 +CCLK
+        char *pClk = strstr(pLine, "+CCLK: ");
+        if (pClk != NULL)
+        {
+            int year, month, date;
+            int hour, minute, second;
+            int timezone; // 如果需要可以使用
+
+            // 解析: +CCLK: "YYYY/MM/DD,hh:mm:ss+ZZ"
+            if (sscanf(pClk, "+CCLK: \"%d/%d/%d,%d:%d:%d+%d\"",
+                    &year, &month, &date,
+                    &hour, &minute, &second,
+                    &timezone) == 7)
+            {
+                // 1) 将解析出的时间写入RTC
+                RTC_TimeTypeDef sTime = {0};
+                RTC_DateTypeDef sDate = {0};
+
+                sDate.Year  = (uint8_t)(year - 2000);
+                sDate.Month = (uint8_t)month;
+                sDate.Date  = (uint8_t)date;
+
+                sTime.Hours   = (uint8_t)hour;
+                sTime.Minutes = (uint8_t)minute;
+                sTime.Seconds = (uint8_t)second;
+                sTime.TimeFormat = RTC_HOURFORMAT12_AM; 
+
+                HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
+                HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
+
+                // 2) 读取刚刚写入的RTC时间，并通过串口2发送出去
+                RTC_TimeTypeDef sTimeRead = {0};
+                RTC_DateTypeDef sDateRead = {0};
+
+                // 读取RTC，先读time再读date（HAL库要求）
+                HAL_RTC_GetTime(&hrtc, &sTimeRead, RTC_FORMAT_BIN);
+                HAL_RTC_GetDate(&hrtc, &sDateRead, RTC_FORMAT_BIN);
+
+                // 拼接输出字符串
+                
+                // 这里用 20%02d 处理两位数的Year，假设Year是在2000~2099
+                snprintf(outStr, sizeof(outStr),
+                        "Current RTC: 20%02d/%02d/%02d %02d:%02d:%02d\r\n",
+                        sDateRead.Year,
+                        sDateRead.Month,
+                        sDateRead.Date,
+                        sTimeRead.Hours,
+                        sTimeRead.Minutes,
+                        sTimeRead.Seconds);
+
+                // 发送到串口2 (DMA方式)
+                HAL_UART_Transmit_DMA(&huart2, (uint8_t*)outStr, strlen(outStr));
+            }
+            return; // 直接返回，避免继续处理
+        }
+
+        // 如果要继续接收后续NB数据，必须再启动一次DMA接收
+    HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
+    }
+}

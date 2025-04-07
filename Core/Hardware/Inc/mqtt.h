@@ -12,6 +12,7 @@
 #include "usart.h"
 #include "gpio.h"
 #include "stdio.h"
+#include "processCommand.h"
 
 // #define MQTT_ID	"k0oz30rCDAx.SLM130|securemode=2,signmethod=hmacsha256,timestamp=1741606575867|"
 // #define MQTT_USERNAME	"SLM130&k0oz30rCDAx"

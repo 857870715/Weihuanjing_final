@@ -23,7 +23,8 @@
 #include "usart.h"
 #include "gpio.h"
 
-
+extern uint8_t NBAcquisitionFlag;
+extern uint8_t RxBuffer[50];
 // void processTem1(void);
 
 // void processTem2(void);

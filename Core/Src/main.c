@@ -63,6 +63,8 @@ etError   error;
 
 /* USER CODE BEGIN PV */
 uint8_t dataAcquisitionFlag = 0;
+char outStr[64];
+uint8_t RxBuffer[50];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/

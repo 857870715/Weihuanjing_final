@@ -57,7 +57,8 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern char outStr[64];
+extern uint8_t RxBuffer[50];
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
