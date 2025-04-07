@@ -130,7 +130,8 @@ int main(void)
   while (1)
   {
     HAL_Delay(2000);
-    HAL_PWR_EnterSTANDBYMode();
+    // HAL_PWR_EnterSTANDBYMode();
+    HAL_PWREx_EnterSHUTDOWNMode();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
