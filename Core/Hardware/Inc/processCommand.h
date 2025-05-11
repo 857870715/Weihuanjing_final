@@ -22,6 +22,7 @@
 #include "dma.h"
 #include "usart.h"
 #include "gpio.h"
+#include "flash_storage.h"
 
 extern uint8_t NBAcquisitionFlag;
 extern uint8_t RxBuffer[50];
