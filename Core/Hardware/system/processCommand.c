@@ -3,6 +3,8 @@
 #include "gpio.h"
 
 uint8_t NBAcquisitionFlag = 0;
+uint8_t  CSQAcquisitionFlag = 0;
+uint8_t last_rssi = 0;
 
 void GetDataAndSend(void)
 {
@@ -14,7 +16,7 @@ void GetDataAndSend(void)
 	HAL_GPIO_WritePin(GPIOB, I2C_EN_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOB, NB_EN_Pin, GPIO_PIN_SET);
     uint32_t timeout_counter = 0;
-    uint32_t timeout_limit = 300; // 30 seconds (30,000ms / 100ms)
+    uint32_t timeout_limit = 600; // 60 seconds (30,000ms / 100ms)
     
     while(NBAcquisitionFlag == 0) {
         HAL_Delay(100); // Small delay to prevent CPU hogging
@@ -37,9 +39,10 @@ void GetDataAndSend(void)
     SHT3X1_GetTempAndHumi(&temperature1, &humidity1, REPEATAB_HIGH, MODE_CLKSTRETCH, 50);
     SHT3X2_GetTempAndHumi(&temperature2, &humidity2, REPEATAB_HIGH, MODE_CLKSTRETCH, 50);
     SHT3X3_GetTempAndHumi(&temperature3, &humidity3, REPEATAB_HIGH, MODE_CLKSTRETCH, 50);
+    CheckCSQ();
 
     HAL_Delay(1000);
-    Sendmessage(temperature1, humidity1, temperature2, humidity2, temperature3, humidity3);
+    Sendmessage(temperature1, humidity1, temperature2, humidity2, temperature3, humidity3, last_rssi);
 
     HAL_Delay(1000);
     HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);

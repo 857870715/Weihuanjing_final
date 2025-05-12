@@ -27,9 +27,12 @@ static DeviceConfig g_deviceConfig;
 static char MQTT_TOPIC_SEND[128] = "";
 
 extern char outStr[64];
-extern uint8_t RxBuffer[50];
+extern uint8_t RxBuffer[40];
+extern uint8_t CSQBuffer[20];
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern RTC_HandleTypeDef hrtc;
+extern uint8_t  CSQAcquisitionFlag;
+extern uint8_t last_rssi;
 /**
  * @brief 从 Flash 中读取设备配置数据
  */
@@ -100,7 +103,7 @@ void MQTT_ConnectInit(void)
 
 void Sendmessage(float temperature1, float humidity1,
                  float temperature2, float humidity2,
-                 float temperature3, float humidity3) 
+                 float temperature3, float humidity3, uint8_t last_rssi) 
 {
     char payload[256];
     // char cmdBuffer_Sendmessage[256];
@@ -108,16 +111,13 @@ void Sendmessage(float temperature1, float humidity1,
              "{\"params\":{"
              "\"temperature1\":%.1f,\"humidity1\":%.1f,"
              "\"temperature2\":%.1f,\"humidity2\":%.1f,"
-             "\"temperature3\":%.1f,\"humidity3\":%.1f"
+             "\"temperature3\":%.1f,\"humidity3\":%.1f,"
+             "\"rssi\":%d"
              "}}",
              temperature1, humidity1,
              temperature2, humidity2,
-             temperature3, humidity3);
+             temperature3, humidity3, last_rssi);
 
-    // 使用构造好的 MQTT_TOPIC_SEND 发送 AT 指令
-    // snprintf(cmdBuffer_Sendmessage, sizeof(cmdBuffer_Sendmessage), 
-    //         "AT+ECMTPUB=0,0,0,0,\"%s\",%s", MQTT_TOPIC_SEND, payload);
-    // sendATCmd(cmdBuffer_Sendmessage, 100);
     printf("AT+ECMTPUB=0,0,0,0,\"%s\",%s\r\n", MQTT_TOPIC_SEND, payload);
     HAL_Delay(100);
 }
@@ -127,7 +127,14 @@ void CheckTimeSetRTC(void)
     HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
     sprintf(cmdBuffer_RTC, "AT+CCLK?");
     sendATCmd(cmdBuffer_RTC, 100);
-    // printf("AT+CCLK?\r\n");
+}
+
+void CheckCSQ(void)
+{
+    char cmdBuffer_CSQ[20];
+    HAL_UART_Receive_DMA(&huart2, CSQBuffer, sizeof(CSQBuffer));
+    sprintf(cmdBuffer_CSQ, "AT+CSQ");
+    sendATCmd(cmdBuffer_CSQ, 100);
 }
 
 /**
@@ -203,7 +210,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
             return; // 直接返回，避免继续处理
         }
 
+        char *pCSQ = strstr((char*)CSQBuffer, "+CSQ: ");
+        if (pCSQ) 
+        {
+            int rssi, ber;
+            if (sscanf(pCSQ, "+CSQ: %d,%d", &rssi, &ber) == 2)
+            {
+                last_rssi = rssi;
+            }
+        }
+        
         // 如果要继续接收后续NB数据，必须再启动一次DMA接收
-    HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
+        HAL_UART_Receive_DMA(&huart2, RxBuffer, sizeof(RxBuffer));
     }
 }
