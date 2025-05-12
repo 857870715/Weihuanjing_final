@@ -79,8 +79,11 @@ void MQTT_ConnectInit(void)
     // 2. 根据读取的配置更新 MQTT 主题字符串
     UpdateMQTTTopic();
 
+    //配置保活时间
+    sendATCmd("AT+ECMTCFG=\"keepalive\",0,1200", 1000);
+
     // 发送云平台配置命令
-    sendATCmd("AT+ECMTCFG=\"cloud\",0,2,1", 2000);
+    sendATCmd("AT+ECMTCFG=\"cloud\",0,2,1", 1000);
 
     // 构造认证命令，使用从 Flash 中读取到的设备参数
     snprintf(cmdBuffer, sizeof(cmdBuffer),
