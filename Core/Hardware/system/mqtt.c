@@ -91,17 +91,17 @@ void MQTT_ConnectInit(void)
              g_deviceConfig.product_key,
              g_deviceConfig.device_name,
              g_deviceConfig.device_secret);
-    sendATCmd(cmdBuffer, 3000);
+    sendATCmd(cmdBuffer, 2000);
 
     // 构造打开 MQTT 连接命令（MQTT_HOST 仍使用宏定义）
     snprintf(cmdBuffer, sizeof(cmdBuffer),
              "AT+ECMTOPEN=0,\"%s\",1883", MQTT_HOST);
-    sendATCmd(cmdBuffer, 4000);
+    sendATCmd(cmdBuffer, 10000);
 
     // 构造建立连接命令，使用产品名称
     snprintf(cmdBuffer, sizeof(cmdBuffer),
              "AT+ECMTCONN=0,\"%s\"", g_deviceConfig.product_name);
-    sendATCmd(cmdBuffer, 1000);
+    sendATCmd(cmdBuffer, 3000);
 }
 
 void Sendmessage(float temperature1, float humidity1,
